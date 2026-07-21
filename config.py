@@ -1,14 +1,18 @@
 # config.py 自定义配置,包括阅读次数、推送token的填写
 import os
 import re
+import random
 
 """
 可修改区域
 默认使用本地值如果不存在从环境变量中获取值
 """
 
-# 阅读次数 默认40次/20分钟
-READ_NUM = int(os.getenv('READ_NUM') or 40)
+# 阅读次数：随机生成，不再使用 Repository Variables 固定值
+# 取值范围 180~260（每次 30 秒，对应每天约 90~100 分钟）
+# 目的：即使每天都取到区间下限（90分钟），7 天累计也有 630 分钟（10.5 小时），确保 7 天 10 小时以上
+# 如仍需固定次数，可通过环境变量 READ_NUM 覆盖
+READ_NUM = int(os.getenv('READ_NUM') or random.randint(180, 200))
 # 需要推送时可选，可选pushplus、wxpusher、telegram
 PUSH_METHOD = "" or os.getenv('PUSH_METHOD')
 # pushplus推送时需填

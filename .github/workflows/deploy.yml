@@ -7,9 +7,9 @@ concurrency:
 on:
   schedule:
     # 凌晨任务：北京时间每天 01:00（UTC 前一天 17:00）
-    - cron: '0 17 * * *'
-    # 早间任务：北京时间每天 05:00（UTC 前一天 21:00）
-    #- cron: '0 21 * * *'
+    # - cron: '0 17 * * *'
+    # 早间任务：北京时间每天 06:30（UTC 前一天 22:30）
+    - cron: '30 22 * * *'
     # 午间任务：北京时间每天 11:40（UTC 03:40）
     #- cron: '40 3 * * *'
     # 晚间任务：北京时间每天 22:00（UTC 14:00）
@@ -50,7 +50,7 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         SERVERCHAN_SPT:  ${{ secrets.SERVERCHAN_SPT }}
-        READ_NUM: ${{ vars.READ_NUM }}  # 使用 Repository Variables
+        # READ_NUM 不再使用 Repository Variables，改为 config.py 中随机生成（180~260，约90~130分钟/天）
 
       run: |
         python main.py
