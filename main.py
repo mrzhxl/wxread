@@ -6,6 +6,7 @@ import logging
 import hashlib
 import requests
 import urllib.parse
+from datetime import datetime, timezone, timedelta
 from push import push
 from log_utils import setup_logging
 from config import data, headers, cookies, READ_NUM, PUSH_METHOD, book, chapter
@@ -76,7 +77,8 @@ def refresh_cookie():
 refresh_cookie()
 index = 1
 lastTime = int(time.time()) - 30
-logging.info(f"一共需要阅读 {READ_NUM} 次。")
+readTime = READ_NUM * 0.5
+logging.info(f"一共需要阅读 {READ_NUM} 次, 阅读时长 {readTime:.1f} 分钟")
 
 while index <= READ_NUM:
     data.pop('s')
@@ -113,6 +115,7 @@ logging.info("阅读脚本已完成。")
 
 if PUSH_METHOD not in (None, ''):
     logging.info("开始推送...")
-    push(f"微信读书自动阅读完成。\n阅读时长：{(index - 1) * 0.5} 分钟。", PUSH_METHOD, is_success=True)
+    now_str = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M:%S')
+    push(f"微信读书自动阅读完成。\n阅读时长：{(index - 1) * 0.5} 分钟。\n完成时间：{now_str}", PUSH_METHOD, is_success=True)
 else:
     logging.info("未配置推送渠道，跳过推送。")
