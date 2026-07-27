@@ -23,10 +23,10 @@ jobs:
         echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf
 
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v6
       with:
         python-version: '3.10'
 
@@ -58,3 +58,27 @@ jobs:
       actions: write
     steps:
       - uses: liskin/gh-workflow-keepalive@v1.2.1
+
+  cleanup-job:
+    name: Cleanup Old Runs
+    if: ${{ always() }}
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: 删除 7 天前的运行记录
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "删除创建于 $CUTOFF 之前的运行记录"
+          gh api --paginate \
+            "repos/$GH_REPO/actions/workflows/deploy.yml/runs?per_page=100" \
+            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id" \
+          | while read -r RUN_ID; do
+              [ -z "$RUN_ID" ] && continue
+              echo "Deleting run $RUN_ID"
+              gh api -X DELETE "repos/$GH_REPO/actions/runs/$RUN_ID" --silent || true
+            done
