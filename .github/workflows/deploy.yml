@@ -44,8 +44,7 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         SERVERCHAN_SPT:  ${{ secrets.SERVERCHAN_SPT }}
-        # READ_NUM 不再使用 Repository Variables，改为 config.py 中随机生成（180~200，约90~100分钟/天）
-
+        READ_NUM: ${{ vars.READ_NUM }}  # Repository Variables，阅读次数基数，实际会向上抖动最多 20%
       run: |
         python main.py
 

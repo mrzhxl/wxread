@@ -8,11 +8,12 @@ import random
 默认使用本地值如果不存在从环境变量中获取值
 """
 
-# 阅读次数：随机生成，不再使用 Repository Variables 固定值
-# 取值范围 180~260（每次 30 秒，对应每天约 90~100 分钟）
-# 目的：即使每天都取到区间下限（90分钟），7 天累计也有 630 分钟（10.5 小时），确保 7 天 10 小时以上
-# 如仍需固定次数，可通过环境变量 READ_NUM 覆盖
-READ_NUM = int(os.getenv('READ_NUM') or random.randint(180, 200))
+# 阅读次数基数，从 Repository Variables 的 READ_NUM 读取，未配置时用 180
+# 实际次数在 [基数, 基数*1.2] 内随机，只向上抖动以保证基数是下限
+# 180 次 * 30 秒 = 90 分钟/天，7 天累计 10.5 小时
+_base = int(os.getenv('READ_NUM') or 180)
+READ_NUM = random.randint(_base, int(_base * 1.2))
+
 # 需要推送时可选，可选pushplus、wxpusher、telegram
 PUSH_METHOD = "" or os.getenv('PUSH_METHOD')
 # pushplus推送时需填
