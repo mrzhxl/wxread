@@ -24,6 +24,15 @@ def encode_data(data):
     return '&'.join(f"{k}={urllib.parse.quote(str(data[k]), safe='')}" for k in sorted(data.keys()))
 
 
+def format_duration(minutes):
+    """把分钟数格式化为“x 小时 y 分钟”"""
+    hours, mins = divmod(minutes, 60)
+    mins_str = f"{mins:.0f}" if float(mins).is_integer() else f"{mins:.1f}"
+    if hours >= 1:
+        return f"{hours:.0f} 小时 {mins_str} 分钟"
+    return f"{mins_str} 分钟"
+
+
 def cal_hash(input_string):
     """计算哈希值"""
     _7032f5 = 0x15051505
@@ -115,6 +124,6 @@ logging.info("阅读脚本已完成。")
 if PUSH_METHOD not in (None, ''):
     logging.info("开始推送...")
     now_str = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M:%S')
-    push(f"微信读书自动阅读完成。\n阅读时长：{(index - 1) * 0.5} 分钟。\n完成时间：{now_str}", PUSH_METHOD, is_success=True)
+    push(f"微信读书自动阅读完成。\n阅读时长：{format_duration((index - 1) * 0.5)}。\n完成时间：{now_str}", PUSH_METHOD, is_success=True)
 else:
     logging.info("未配置推送渠道，跳过推送。")
