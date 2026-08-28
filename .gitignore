@@ -8,3 +8,6 @@ logs/
 
 # Macos
 .DS_Store
+
+# 运行时生成的新 curl bash（含 cookie，切勿提交）
+new_curl_bash.txt

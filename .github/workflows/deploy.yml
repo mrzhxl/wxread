@@ -48,6 +48,25 @@ jobs:
       run: |
         python main.py
 
+    # 微信读书的 wr_rt 每次 renewal 都会轮转且只有 7 天寿命。
+    # 不把轮转后的值写回 Secret，下次运行就还是拿最初那个 wr_rt，7 天后必然鉴权失败。
+    - name: 回写刷新后的 cookie 到 WXREAD_CURL_BASH
+      if: ${{ always() }}
+      env:
+        GH_TOKEN: ${{ secrets.WXREAD_SECRET_PAT }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        if [ ! -s new_curl_bash.txt ]; then
+          echo "本次没有生成新的 curl bash（renewal 未成功），跳过回写"
+          exit 0
+        fi
+        if [ -z "$GH_TOKEN" ]; then
+          echo "未配置 WXREAD_SECRET_PAT，跳过回写；登录态仍会在 7 天后失效"
+          exit 0
+        fi
+        gh secret set WXREAD_CURL_BASH < new_curl_bash.txt
+        echo "已回写 WXREAD_CURL_BASH（$(wc -c < new_curl_bash.txt) 字节）"
+
   keepalive-job:
     name: Keepalive Workflow
     if: ${{ always() }}
@@ -66,16 +85,21 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: 删除 7 天前的运行记录
+      - name: 清理旧的运行记录
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
-          echo "删除创建于 $CUTOFF 之前的运行记录"
+          # 成功的留 7 天；失败的留 30 天，方便回头查故障日志
+          OK_CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          ALL_CUTOFF=$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "删除 $OK_CUTOFF 之前的成功记录，以及 $ALL_CUTOFF 之前的全部记录"
           gh api --paginate \
             "repos/$GH_REPO/actions/workflows/deploy.yml/runs?per_page=100" \
-            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id" \
+            --jq ".workflow_runs[]
+                  | select(.created_at < \"$ALL_CUTOFF\"
+                           or (.created_at < \"$OK_CUTOFF\" and .conclusion == \"success\"))
+                  | .id" \
           | while read -r RUN_ID; do
               [ -z "$RUN_ID" ] && continue
               echo "Deleting run $RUN_ID"
