@@ -51,21 +51,36 @@ class PushNotification:
     def push_telegram(self, content, bot_token, chat_id):
         url = self.telegram_url.format(bot_token)
         payload = {"chat_id": chat_id, "text": content}
+        # 只有真配了代理才走代理；否则 proxies 全是 None，
+        # “代理发送 + 直连兜底”实际上是同一个请求发两遍
+        proxies = {k: v for k, v in self.proxies.items() if v}
+        # 第二次尝试只在连接阶段失败时才走得到：配了代理就回退直连，否则原样再试一次
+        attempts = [proxies, None] if proxies else [None, None]
 
-        try:
-            response = requests.post(url, json=payload, proxies=self.proxies, timeout=30)
-            logger.info("Telegram 响应: %s", response.text)
-            response.raise_for_status()
-            return True
-        except Exception as exc:
-            logger.error("Telegram 代理发送失败: %s", exc)
+        for index, proxy in enumerate(attempts):
             try:
-                response = requests.post(url, json=payload, timeout=30)
+                response = requests.post(url, json=payload, proxies=proxy, timeout=30)
                 response.raise_for_status()
-                return True
-            except Exception as inner_exc:
-                logger.error("Telegram 发送失败: %s", inner_exc)
+            except requests.exceptions.ConnectionError as exc:
+                # 连不上 / DNS 解析失败，消息肯定没发出去，重试是安全的
+                logger.error("Telegram 连接失败（第 %d/%d 次）: %s", index + 1, len(attempts), exc)
+                if index + 1 < len(attempts):
+                    time.sleep(5)
+                continue
+            except requests.exceptions.RequestException as exc:
+                # 读超时或 HTTP 错误：请求已经发出去，Telegram 很可能已经投递，
+                # 原样重发会让同一条通知发两遍，这里直接认输
+                logger.error("Telegram 发送未得到确认，不重发（消息可能已送达）: %s", exc)
                 return False
+
+            try:
+                logger.info("Telegram 响应: %s", response.text)
+            except requests.exceptions.RequestException as exc:
+                # 状态码已确认成功，读正文失败不影响结果，更不该触发重发
+                logger.warning("Telegram 响应正文读取失败: %s", exc)
+            return True
+
+        return False
 
     def push_wxpusher(self, content, spt):
         attempts = 5
